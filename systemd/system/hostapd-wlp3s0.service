@@ -1,8 +1,8 @@
 [Unit]
 Description=hostapd AP on wlp3s0 (testessid, WPA3-SAE)
 Documentation=man:hostapd(8)
-Wants=sys-subsystem-net-devices-wlp3s0.device systemd-networkd.service
-After=sys-subsystem-net-devices-wlp3s0.device network-pre.target systemd-networkd.service
+Wants=sys-subsystem-net-devices-wlp3s0.device
+After=sys-subsystem-net-devices-wlp3s0.device network-pre.target
 Before=network.target
 BindsTo=sys-subsystem-net-devices-wlp3s0.device
 Conflicts=hostapd.service wpa_supplicant.service wpa_supplicant@wlp3s0.service NetworkManager.service iwd.service
