@@ -9,7 +9,6 @@ Conflicts=hostapd.service wpa_supplicant.service wpa_supplicant@wlp3s0.service N
 
 [Service]
 Type=simple
-ExecStartPre=/sbin/iw phy phy0 interface add wlp3s0 type __ap 2>/dev/null || true
 ExecStartPre=/bin/sh -c 'mkdir -p /run/hostapd && cp /srv/hostapd/wlp3s0.conf /run/hostapd/wlp3s0.conf && printf "ssid=%s\n" "$(cat /srv/hostapd/values/ssid)" >> /run/hostapd/wlp3s0.conf && printf "sae_password=%s\n" "$(cat /srv/hostapd/values/password)" >> /run/hostapd/wlp3s0.conf && chmod 0600 /run/hostapd/wlp3s0.conf'
 ExecStart=/usr/sbin/hostapd /run/hostapd/wlp3s0.conf
 Restart=on-failure
