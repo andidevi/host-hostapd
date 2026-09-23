@@ -7,9 +7,13 @@ SRC_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 HOSTAPD_SRC="$SRC_DIR/hostapd/wlp3s0.conf"
 SERVICE_SRC="$SRC_DIR/systemd/system/hostapd-wlp3s0.service"
+SSID_EXAMPLE="$SRC_DIR/hostapd/values/ssid.example"
+PASS_EXAMPLE="$SRC_DIR/hostapd/values/password.example"
 
 HOSTAPD_DST="/srv/hostapd/wlp3s0.conf"
 SERVICE_DST="/etc/systemd/system/hostapd-wlp3s0.service"
+SSID_DST="/srv/hostapd/values/ssid"
+PASS_DST="/srv/hostapd/values/password"
 
 ENABLE=1
 RELOAD=1
@@ -24,12 +28,24 @@ for arg in "$@"; do
   esac
 done
 
-for f in "$HOSTAPD_SRC" "$SERVICE_SRC"; do
+for f in "$HOSTAPD_SRC" "$SERVICE_SRC" "$SSID_EXAMPLE" "$PASS_EXAMPLE"; do
   [ -f "$f" ] || { echo "Missing source file: $f" >&2; exit 1; }
 done
 
-# hostapd configs -> /srv/hostapd (0600: contains PSK/password)
-install -D -m 0600 "$HOSTAPD_SRC" "$HOSTAPD_DST"
+# hostapd base config -> /srv/hostapd (geheimnisfrei, 0644 reicht)
+install -D -m 0644 "$HOSTAPD_SRC" "$HOSTAPD_DST"
+
+# Beispielwerte nur installieren, wenn am Ziel noch nichts liegt (0600, Klartext)
+if [ -e "$SSID_DST" ]; then
+  echo "Keeping existing $SSID_DST"
+else
+  install -D -m 0600 "$SSID_EXAMPLE" "$SSID_DST"
+fi
+if [ -e "$PASS_DST" ]; then
+  echo "Keeping existing $PASS_DST"
+else
+  install -D -m 0600 "$PASS_EXAMPLE" "$PASS_DST"
+fi
 
 # systemd unit -> /etc/systemd/system (0644)
 install -D -m 0644 "$SERVICE_SRC" "$SERVICE_DST"
@@ -51,3 +67,5 @@ fi
 echo "Installed:"
 echo "  $HOSTAPD_DST"
 echo "  $SERVICE_DST"
+echo "  $SSID_DST (only if new)"
+echo "  $PASS_DST (only if new)"
