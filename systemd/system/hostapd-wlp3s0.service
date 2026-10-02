@@ -2,8 +2,7 @@
 Description=hostapd AP on wlp3s0 (WPA3-SAE, SSID/Passwort aus /srv/hostapd/values)
 Documentation=man:hostapd(8)
 Wants=sys-subsystem-net-devices-wlp3s0.device
-After=sys-subsystem-net-devices-wlp3s0.device network-pre.target
-Before=network.target
+After=sys-subsystem-net-devices-wlp3s0.device network.target
 BindsTo=sys-subsystem-net-devices-wlp3s0.device
 Conflicts=hostapd.service wpa_supplicant.service wpa_supplicant@wlp3s0.service NetworkManager.service iwd.service
 
