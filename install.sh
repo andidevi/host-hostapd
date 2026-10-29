@@ -7,11 +7,15 @@ SRC_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 HOSTAPD_SRC="$SRC_DIR/hostapd/wlp3s0.conf"
 SERVICE_SRC="$SRC_DIR/systemd/system/hostapd-wlp3s0.service"
+WATCHDOG_SRC="$SRC_DIR/bin/hostapd-dmesg-watchdog"
+WATCHDOG_UNIT_SRC="$SRC_DIR/systemd/system/hostapd-dmesg-watchdog-wlp3s0.service"
 SSID_EXAMPLE="$SRC_DIR/hostapd/values/ssid.example"
 PASS_EXAMPLE="$SRC_DIR/hostapd/values/password.example"
 
 HOSTAPD_DST="/srv/hostapd/wlp3s0.conf"
 SERVICE_DST="/etc/systemd/system/hostapd-wlp3s0.service"
+WATCHDOG_DST="/srv/hostapd/bin/hostapd-dmesg-watchdog"
+WATCHDOG_UNIT_DST="/etc/systemd/system/hostapd-dmesg-watchdog-wlp3s0.service"
 SSID_DST="/srv/hostapd/values/ssid"
 PASS_DST="/srv/hostapd/values/password"
 
@@ -28,7 +32,7 @@ for arg in "$@"; do
   esac
 done
 
-for f in "$HOSTAPD_SRC" "$SERVICE_SRC" "$SSID_EXAMPLE" "$PASS_EXAMPLE"; do
+for f in "$HOSTAPD_SRC" "$SERVICE_SRC" "$WATCHDOG_SRC" "$WATCHDOG_UNIT_SRC" "$SSID_EXAMPLE" "$PASS_EXAMPLE"; do
   [ -f "$f" ] || { echo "Missing source file: $f" >&2; exit 1; }
 done
 
@@ -50,6 +54,10 @@ fi
 # systemd unit -> /etc/systemd/system (0644)
 install -D -m 0644 "$SERVICE_SRC" "$SERVICE_DST"
 
+# dmesg-watchdog: script -> /usr/local/sbin (0755), unit -> systemd (0644)
+install -D -m 0755 "$WATCHDOG_SRC" "$WATCHDOG_DST"
+install -D -m 0644 "$WATCHDOG_UNIT_SRC" "$WATCHDOG_UNIT_DST"
+
 # Ensure runtime dir for ctrl_interface exists at boot (no tmpfiles needed; hostapd creates /run/hostapd)
 
 if [ "$RELOAD" -eq 1 ]; then
@@ -67,5 +75,7 @@ fi
 echo "Installed:"
 echo "  $HOSTAPD_DST"
 echo "  $SERVICE_DST"
+echo "  $WATCHDOG_DST"
+echo "  $WATCHDOG_UNIT_DST"
 echo "  $SSID_DST (only if new)"
 echo "  $PASS_DST (only if new)"

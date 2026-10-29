@@ -1,0 +1,67 @@
+#!/bin/sh
+# dmesg-Watchdog fuer hostapd-wlp3s0
+#
+# Hardware-Problem kleiner WLAN-Chips: haengt die Key-Table der Firmware,
+# loggt der Kernel  "failed to remove key .* from hardware"  und der Access
+# Point ist faktisch tot (Clients koennen nicht mehr verbinden). Dieser
+# Watchdog folgt dem Kernel-Ringpuffer (dmesg) und startet hostapd neu,
+# sobald die Meldung auftaucht.
+#
+# - Es werden nur *neue* Kernel-Meldungen gelesen (dmesg --follow-new,
+#   util-linux >= 2.30); alte Eintraege im Ringpuffer loesen keinen
+#   Restart aus.
+# - Cooldown verhindert einen Restart-Sturm bei Meldungs-Bursts (der
+#   Kernel kann die Meldung einmal pro Client-Key loggen).
+# - Lifecycle haengt an hostapd-wlp3s0.service: dort Wants=, hier PartOf=.
+#   Stop/Restart von hostapd zieht den Watchdog mit, ein gemeint
+#   gestoppter AP wird also nicht wachgekuesst. Durch den mitlaufenden
+#   Neustart des Watchdogs ist dmesg --follow-new nach jedem Restart
+#   wieder frisch verankert.
+# - Hardcap gegen echte Restart-Schleifen: StartLimitIntervalSec/
+#   StartLimitBurst in systemd/system/hostapd-wlp3s0.service.
+# - Installiert nach /usr/local/sbin (siehe install.sh).
+#
+# Funktionstest (erzwingt einen echten Neustart vom laufenden AP!):
+#   echo "wlp3s0: failed to remove key (1, ff:ff:ff:ff:ff:ff) from hardware (-110)" \
+#     | sudo tee /dev/kmsg
+
+set -u
+
+TAG=hostapd-dmesg-watchdog
+
+SERVICE='hostapd-wlp3s0.service'
+PATTERN='failed to remove key .* from hardware'
+COOLDOWN=10
+
+# Overrides fuer Tests / Betrieb mit anderen Units (Environment= im Unit-File)
+[ -n "${HOSTAPD_SERVICE:-}" ]  && SERVICE=$HOSTAPD_SERVICE
+[ -n "${HOSTAPD_PATTERN:-}" ]  && PATTERN=$HOSTAPD_PATTERN
+[ -n "${HOSTAPD_COOLDOWN:-}" ] && COOLDOWN=$HOSTAPD_COOLDOWN
+
+log() {
+  printf '%s: %s\n' "$TAG" "$*" >&2
+}
+
+last_trigger=0
+
+log "dmesg-Watchdog aktiv: pattern='$PATTERN' service=$SERVICE cooldown=${COOLDOWN}s"
+
+# Kein set -e: ein grep ohne Treffer am EOF wuerde sonst den Exit-Status
+# verfaelschen; Restart-Verhalten regelt Restart=always in der Unit.
+dmesg --follow-new |
+grep -E --line-buffered -- "$PATTERN" |
+while IFS= read -r line; do
+  now=$(date +%s)
+  if [ $((now - last_trigger)) -lt "$COOLDOWN" ]; then
+    log "Cooldown aktiv, ignoriere weitere Meldung: $line"
+    continue
+  fi
+  last_trigger=$now
+  log "TRIGGER durch Kernel-Meldung: $line"
+  log "starte $SERVICE neu"
+  systemctl restart "$SERVICE" \
+    || log "WARNUNG: systemctl restart $SERVICE fehlgeschlagen (siehe journalctl -u $SERVICE)"
+done
+
+log "dmesg-Pipeline endete; systemd startet den Watchdog neu (Restart=always)"
+exit 0

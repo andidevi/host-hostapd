@@ -1,0 +1,20 @@
+[Unit]
+Description=dmesg watchdog: startet hostapd-wlp3s0 neu bei Kernel-Fehler "failed to remove key"
+Documentation=man:dmesg(1)
+# Lifecycle an hostapd haengen: Stop/Restart von hostapd-wlp3s0 zieht
+# diesen Watchdog mit (PartOf=), das Starten uebernimmt Wants= in der
+# hostapd-wlp3s0.service. Damit laeuft der Watchdog nie ohne AP und
+# startet nie einen absichtlich gestoppten AP.
+PartOf=hostapd-wlp3s0.service
+After=hostapd-wlp3s0.service
+
+[Service]
+Type=simple
+# Script liest dmesg und ruft systemctl restart auf -> braucht root
+ExecStart=/srv/hostapd/bin/hostapd-dmesg-watchdog
+# Watchdog muss nach einem Crash der Pipeline immer wieder da sein
+Restart=always
+RestartSec=3
+
+# kein [Install]: wird von hostapd-wlp3s0.service (Wants=) mitgestartet
+# und nicht separat enabled.
