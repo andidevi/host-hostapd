@@ -30,7 +30,7 @@ set -u
 TAG=hostapd-dmesg-watchdog
 
 SERVICE='hostapd-wlp3s0.service'
-PATTERN='failed to remove key .* from hardware'
+PATTERN='failed to remove key .* from hardware|mt7925e .*: Message .* timeout|mt7925e .*: Loading firmware patch: mediatek/mt7927'
 COOLDOWN=10
 
 # Overrides fuer Tests / Betrieb mit anderen Units (Environment= im Unit-File)
